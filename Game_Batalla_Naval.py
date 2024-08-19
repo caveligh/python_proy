@@ -54,6 +54,7 @@ class Player:
         self.ships = []
         self.hits = [[' ' for _ in range(10)] for _ in range(10)]
         self.is_computer = is_computer
+        self.last_hit = None
 
     def place_ships(self):
         ships = [Destroyer(), Submarine(), Battleship()]
@@ -85,63 +86,85 @@ class Player:
     def attack(self, opponent):
         while True:
             if self.is_computer:
-                row = random.randint(0, 9)
-                col = random.randint(0, 9)
+                row, col = self.computer_attack_strategy()
             else:
                 print(f"{self.name}, elige una posición para atacar.")
                 row = int(input("Fila (0-9): "))
                 col = int(input("Columna (0-9): "))
+            
             if 0 <= row < 10 and 0 <= col < 10 and self.hits[row][col] == ' ':
                 if opponent.board[row][col] == ' ':
-                    print("Agua!")
+                    print(f"{self.name} disparó al agua en ({row}, {col})!")
                     self.hits[row][col] = 'A'
                     opponent.board[row][col] = 'A'
+                    self.last_hit = None
                     break
                 else:
-                    print("Impacto!")
+                    print(f"{self.name} impactó un barco en ({row}, {col})!")
                     self.hits[row][col] = 'T'
                     for ship in opponent.ships:
                         if (row, col) in ship.positions:
                             if ship.hit():
-                                print(f"¡Hundido! Has hundido el {ship.name} de {opponent.name}.")
+                                print(f"¡{self.name} ha hundido el {ship.name} de {opponent.name}!")
                             break
                     opponent.board[row][col] = 'T'
+                    if self.is_computer:
+                        self.last_hit = (row, col)
                     break
             elif not self.is_computer:
                 print("Posición no válida o ya atacada. Intenta de nuevo.")
+
+    def computer_attack_strategy(self):
+        if self.last_hit:
+            # Intenta atacar alrededor del último impacto
+            row, col = self.last_hit
+            directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+            random.shuffle(directions)
+            for dr, dc in directions:
+                new_row, new_col = row + dr, col + dc
+                if 0 <= new_row < 10 and 0 <= new_col < 10 and self.hits[new_row][new_col] == ' ':
+                    return new_row, new_col
+        
+        # Si no hay un último impacto o no se puede atacar alrededor, ataca al azar
+        while True:
+            row = random.randint(0, 9)
+            col = random.randint(0, 9)
+            if self.hits[row][col] == ' ':
+                return row, col
 
     def all_ships_sunk(self):
         return all(ship.hits == ship.size for ship in self.ships)
 
 class BattleshipGame:
     def __init__(self):
-        self.player1 = Player("Jugador 1")
-        self.player2 = Player("Computadora", is_computer=True)
+        self.player = Player("Jugador")
+        self.computer = Player("Computadora", is_computer=True)
 
     def play(self):
         print("Bienvenido al juego de Batalla Naval!")
-        print("Jugador 1 coloca sus barcos.")
-        self.player1.place_ships()
+        print("Jugador, coloca tus barcos.")
+        self.player.place_ships()
         print("La computadora está colocando sus barcos...")
-        self.player2.place_ships()
-
-        current_player = self.player1
-        opponent = self.player2
+        self.computer.place_ships()
 
         while True:
-            if not current_player.is_computer:
-                print("\nTu tablero:")
-                self.player1.print_board(self.player1.board)
-                print("\nTus ataques:")
-                self.player1.print_board(self.player1.hits)
-
-            current_player.attack(opponent)
+            # Turno del jugador
+            print("\nTu tablero:")
+            self.player.print_board(self.player.board)
+            print("\nTus ataques:")
+            self.player.print_board(self.player.hits)
             
-            if opponent.all_ships_sunk():
-                print(f"\n¡{current_player.name} ha ganado el juego!")
+            self.player.attack(self.computer)
+            if self.computer.all_ships_sunk():
+                print("\n¡Felicidades! Has ganado el juego.")
                 break
-            
-            current_player, opponent = opponent, current_player
+
+            # Turno de la computadora
+            print("\nTurno de la computadora:")
+            self.computer.attack(self.player)
+            if self.player.all_ships_sunk():
+                print("\nLa computadora ha ganado el juego. ¡Mejor suerte la próxima vez!")
+                break
 
 # Crear una instancia del juego y jugar
 game = BattleshipGame()

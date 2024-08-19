@@ -1,5 +1,8 @@
 diploma-python.pdf
 *library*
 *.docx
+*.pdf
 Batalla_Naval.py
 diploma*
+Game_Batalla_Naval.py.backup
+git-github-workflow.md
